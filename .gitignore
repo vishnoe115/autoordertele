@@ -1,16 +1,29 @@
+# Secrets
 .env
-.venv/
+config.env
+*.env
+!config-sample.env
+!.env.example
+
+# Python
 __pycache__/
 *.py[cod]
+*.pyo
+.venv/
+venv/
 .pytest_cache/
 .mypy_cache/
-.ruff_cache/
+
+# Runtime
+data/orders.db
+data/orders.db-shm
+data/orders.db-wal
+data/dana_qris.png
 logs/
 *.log
-data/*.db
-data/*.sqlite
-data/*.sqlite3
-data/dana_qris.png
+
+# Editors / OS
 .vscode/
 .idea/
 .DS_Store
+Thumbs.db

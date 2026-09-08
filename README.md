@@ -1,79 +1,180 @@
-# Telegram Auto Order Bot — KlikQRIS + Manual DANA
+# AutoOrderTele — Telegram Auto Order Bot
 
-Modular Telegram auto-order bot with KlikQRIS automatic QRIS and manual DANA/QRIS fallback.
+Telegram auto-order bot dengan:
 
-## Features
-- Product catalog and quantity selection
-- KlikQRIS QRIS create + webhook + status polling
-- Manual DANA/QRIS fallback
-- Admin order notifications and manual payment confirmation
-- Admin can send/copy product details to buyer
-- SQLite database
-- Rotating application logs and Telegram error handler
-- FastAPI webhook
-- systemd/Nginx examples
-- GitHub Issues/PR templates
-- Sandbox support
+- katalog produk;
+- pembelian dengan kuantitas;
+- QRIS otomatis melalui KlikQRIS;
+- fallback QRIS/DANA manual;
+- webhook pembayaran;
+- backup status polling;
+- validasi signature dan nominal;
+- admin confirmation;
+- upload bukti pembayaran;
+- pengiriman produk/file dari admin ke customer;
+- SQLite persisten;
+- FastAPI health endpoint;
+- Docker Compose untuk Ubuntu 24.04.
 
-## Structure
+## Struktur
+
 ```text
-bot.py
-config.py
-database.py
-logging_config.py
-handlers/
-payments/
-services/
-web/
-jobs/
-deploy/
-data/
-tests/
-.github/
+.
+├── bot.py
+├── config.py
+├── db.py
+├── jobs.py
+├── logging_config.py
+├── Dockerfile
+├── docker-compose.yml
+├── config-sample.env
+├── handlers/
+├── payments/
+├── services/
+├── web/
+├── data/
+└── tests/
 ```
 
-## Important security rule
-Never commit `.env`, bot tokens, KlikQRIS API keys, database files, or your private QRIS image. `.gitignore` already excludes them.
+## Deploy Docker di Ubuntu 24.04
 
-## Deploy
+Install Docker Engine + Compose plugin sesuai dokumentasi resmi Docker, lalu:
+
 ```bash
-git clone https://github.com/YOUR_USERNAME/telegram-auto-order-klikqris.git
-cd telegram-auto-order-klikqris
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-cp .env.example .env
-nano .env
-python bot.py
+git clone https://github.com/vishnoe115/autoordertele.git
+cd autoordertele
+
+cp config-sample.env config.env
+nano config.env
+
+mkdir -p data logs
 ```
 
-For systemd:
+Jika menggunakan QRIS manual, upload gambar Anda ke:
+
+```text
+data/dana_qris.png
+```
+
+Build dan start:
+
 ```bash
-sudo cp deploy/systemd/telegram-auto-order.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now telegram-auto-order
-sudo journalctl -u telegram-auto-order -f
+docker compose up -d --build
+```
+
+Cek:
+
+```bash
+docker compose ps
+docker compose logs -f autoordertele
+curl http://127.0.0.1:8080/health
 ```
 
 ## Update
+
 ```bash
 git pull --ff-only
-source .venv/bin/activate
-pip install -r requirements.txt
-sudo systemctl restart telegram-auto-order
+docker compose up -d --build
+docker image prune -f
 ```
 
-## Webhook
-Set KlikQRIS callback to:
-`https://YOUR_DOMAIN/webhook/klikqris`
+## KlikQRIS
 
-Health:
-`https://YOUR_DOMAIN/health`
+Jika KlikQRIS aktif:
 
-## Testing
+```env
+PUBLIC_BASE_URL=https://bot.example.com
+WEBHOOK_PATH=/webhook/klikqris
+KLIKRIS_API_KEY=...
+KLIKRIS_MERCHANT_ID=...
+KLIKRIS_SANDBOX=true
+```
+
+Callback yang dikirim saat create transaction menjadi:
+
+```text
+https://bot.example.com/webhook/klikqris
+```
+
+Sebelum production, gunakan sandbox KlikQRIS dan simulator pembayaran.
+
+Jika ingin menonaktifkan pembayaran otomatis dan memakai DANA manual saja, kosongkan **keduanya**:
+
+```env
+KLIKRIS_API_KEY=
+KLIKRIS_MERCHANT_ID=
+```
+
+## Reverse Proxy
+
+Compose mengikat API ke `127.0.0.1:8080`, sehingga endpoint tidak dibuka langsung ke internet.
+
+Contoh Nginx:
+
+```nginx
+server {
+    listen 80;
+    server_name bot.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+Untuk KlikQRIS production, domain harus menggunakan HTTPS. Anda bisa menambahkan Certbot atau menggunakan reverse proxy lain yang mengelola TLS.
+
+## Admin Commands
+
+```text
+/admin
+/admin_add_product
+```
+
+`ADMIN_USER_ID` harus berupa numeric Telegram user ID.
+
+## Data Persistence
+
+Docker mem-mount:
+
+```text
+./data -> /app/data
+./logs -> /app/logs
+```
+
+Database:
+
+```text
+data/orders.db
+```
+
+## Security
+
+Jangan commit file berikut:
+
+```text
+config.env
+.env
+data/orders.db
+data/dana_qris.png
+```
+
+File-file tersebut sudah dikecualikan oleh `.gitignore`.
+
+## Test
+
+Syntax check:
+
 ```bash
-python3 check_install.py
-python3 -m pytest -q
+python check_install.py
 ```
 
-Before production, test KlikQRIS Sandbox and verify your webhook, signature validation, amount checks, and duplicate-payment handling.
+Jika pytest tersedia:
+
+```bash
+pytest -q
+```

@@ -1,17 +1,63 @@
-import logging, database as db
+from __future__ import annotations
+
+import logging
+
+from telegram.ext import ContextTypes
+
+import db
+from handlers.user import notify_admin
 from payments.klikqris import KlikQRIS
-from config import settings
-log=logging.getLogger(__name__); client=KlikQRIS()
-async def run(context):
-    for order in db.list_pending_auto_orders():
-        try:
-            data=await client.status(order['order_id']); status=str(data.get('status','')).upper()
-            if status in {'SUCCESS','PAID'}:
-                total=int(float(data.get('total_amount',order['total_amount'])))
-                if total!=int(order['total_amount']): log.error('Amount mismatch %s',order['order_id']); continue
-                changed,_=db.mark_paid(order['order_id'],'KlikQRIS status polling')
-                if changed:
-                    await context.bot.send_message(settings.admin_user_id,f"💸 PAID otomatis\nOrder: <code>{order['order_id']}</code>",parse_mode='HTML')
-                    await context.bot.send_message(order['telegram_id'],f"✅ <b>Pembayaran berhasil!</b>\nOrder: <code>{order['order_id']}</code>",parse_mode='HTML')
-            elif status=='EXPIRED': db.update_order_payment(order['order_id'],status='EXPIRED')
-        except Exception: log.exception('Payment polling failed: %s',order['order_id'])
+from services.payment import (
+    EXPIRED_STATUSES,
+    SUCCESS_STATUSES,
+    amount_from_payload,
+    normalize_status,
+)
+
+log = logging.getLogger(__name__)
+
+
+def build_payment_checker(klikqris: KlikQRIS):
+    async def check_payments(context: ContextTypes.DEFAULT_TYPE) -> None:
+        if not klikqris.enabled:
+            return
+
+        for order in db.pending_auto_orders():
+            try:
+                data = await klikqris.check_status(order["order_id"])
+                status = normalize_status(data.get("status"))
+
+                if status in SUCCESS_STATUSES:
+                    paid_amount = amount_from_payload(data)
+                    if paid_amount != int(order["total_amount"]):
+                        log.warning(
+                            "Ignoring polling result with amount mismatch for %s",
+                            order["order_id"],
+                        )
+                        continue
+
+                    if db.mark_paid_if_pending(
+                        order["order_id"],
+                        "KlikQRIS status polling",
+                    ):
+                        await notify_admin(
+                            context,
+                            order["order_id"],
+                            "💸 Pembayaran ditemukan oleh backup status polling.",
+                        )
+                        await context.bot.send_message(
+                            order["telegram_id"],
+                            f"✅ Pembayaran <b>{order['order_id']}</b> berhasil diverifikasi.",
+                            parse_mode="HTML",
+                        )
+
+                elif status in EXPIRED_STATUSES:
+                    db.update_payment(order["order_id"], status="EXPIRED")
+
+            except Exception:
+                log.exception(
+                    "KlikQRIS polling failed for %s",
+                    order["order_id"],
+                )
+
+    return check_payments
