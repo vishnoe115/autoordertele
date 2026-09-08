@@ -1,0 +1,13 @@
+[Unit]
+Description=Telegram Auto Order Bot - KlikQRIS
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=simple
+WorkingDirectory=/opt/telegram-auto-order-klikqris
+EnvironmentFile=/opt/telegram-auto-order-klikqris/.env
+ExecStart=/opt/telegram-auto-order-klikqris/.venv/bin/python bot.py
+Restart=always
+RestartSec=5
+[Install]
+WantedBy=multi-user.target

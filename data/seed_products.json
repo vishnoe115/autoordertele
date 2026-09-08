@@ -1,0 +1,4 @@
+[
+  {"name":"Produk A","description":"Contoh produk A","price":10000,"active":1},
+  {"name":"Produk B","description":"Contoh produk B","price":25000,"active":1}
+]

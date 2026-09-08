@@ -1,0 +1,16 @@
+.env
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+logs/
+*.log
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+data/dana_qris.png
+.vscode/
+.idea/
+.DS_Store
