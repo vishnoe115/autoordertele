@@ -11,6 +11,7 @@ from config import settings
 from handlers.common import admin_keyboard, order_text
 from payments.klikqris import KlikQRIS, KlikQRISError
 from services.orders import new_order_id, rupiah
+from services.channel_notifications import post_payment_claim, post_payment_proof
 
 log = logging.getLogger(__name__)
 
@@ -278,6 +279,7 @@ async def manual_paid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
         order_id,
         "⚠️ Customer menekan tombol Saya Sudah Bayar.",
     )
+    await post_payment_claim(context.bot, order)
 
 
 async def payment_proof(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -291,14 +293,23 @@ async def payment_proof(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     file_id = update.effective_message.photo[-1].file_id
     db.add_proof(order["order_id"], file_id)
 
-    await update.effective_message.reply_text("📎 Bukti pembayaran diterima.")
+    await update.effective_message.reply_text(
+        "📎 Bukti pembayaran diterima dan diteruskan untuk verifikasi."
+    )
+
+    # Keep the existing private admin notification.
     await context.bot.send_photo(
         settings.admin_user_id,
         file_id,
         caption=f"Bukti pembayaran {order['order_id']}",
     )
+
+    # Also upload the original Telegram photo file_id to the transaction channel.
+    # Telegram reuses the existing file, so no local download/re-upload is needed.
+    await post_payment_proof(context.bot, order, file_id)
+
     await notify_admin(
         context,
         order["order_id"],
-        "Ada bukti pembayaran baru.",
+        "Ada bukti pembayaran baru. Bukti juga sudah diteruskan ke channel transaksi.",
     )

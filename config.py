@@ -33,6 +33,9 @@ def _int(name: str, default: int) -> int:
 class Settings:
     bot_token: str
     admin_user_id: int
+    payment_channel_id: str
+    owner_mention_label: str
+    owner_mention_username: str
 
     public_base_url: str
     webhook_path: str
@@ -78,6 +81,9 @@ def load_settings() -> Settings:
     return Settings(
         bot_token=os.getenv("BOT_TOKEN", "").strip(),
         admin_user_id=_int("ADMIN_USER_ID", 0),
+        payment_channel_id=os.getenv("PAYMENT_CHANNEL_ID", "").strip(),
+        owner_mention_label=os.getenv("OWNER_MENTION_LABEL", "Owner").strip() or "Owner",
+        owner_mention_username=os.getenv("OWNER_MENTION_USERNAME", "").strip().lstrip("@"),
         public_base_url=os.getenv("PUBLIC_BASE_URL", "").strip().rstrip("/"),
         webhook_path=webhook_path,
         klikqris_api_key=os.getenv("KLIKRIS_API_KEY", "").strip(),

@@ -41,3 +41,15 @@ docker compose logs -f autoordertele
 ```
 
 Database lama dengan tabel `users`, `products`, dan `orders` tetap kompatibel dengan schema versi ini.
+
+## Konfigurasi baru: channel bukti pembayaran
+
+Tambahkan ke `config.env`:
+
+```env
+PAYMENT_CHANNEL_ID=-1001234567890
+OWNER_MENTION_USERNAME=your_admin_username
+OWNER_MENTION_LABEL=Owner
+```
+
+Bot harus memiliki izin untuk mem-posting pesan/foto ke channel tersebut.

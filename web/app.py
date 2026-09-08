@@ -9,6 +9,7 @@ from telegram.ext import Application
 import db
 from config import settings
 from handlers.user import notify_admin
+from services.channel_notifications import post_payment_verified
 from services.payment import (
     EXPIRED_STATUSES,
     SUCCESS_STATUSES,
@@ -118,6 +119,13 @@ def create_web_app(telegram_app: Application) -> FastAPI:
                     f"✅ Pembayaran <b>{order_id}</b> berhasil diverifikasi.",
                     parse_mode="HTML",
                 )
+                paid_order = db.order(order_id)
+                if paid_order:
+                    await post_payment_verified(
+                        telegram_app.bot,
+                        paid_order,
+                        source="KlikQRIS webhook",
+                    )
 
         elif status in EXPIRED_STATUSES:
             db.update_payment(order_id, status="EXPIRED")

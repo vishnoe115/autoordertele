@@ -7,6 +7,7 @@ import db
 from config import settings
 from handlers.common import admin_keyboard, is_admin, order_text
 from services.orders import rupiah
+from services.channel_notifications import post_payment_verified
 
 ADD_NAME, ADD_DESC, ADD_PRICE, SEND_PRODUCT = range(10, 14)
 
@@ -80,6 +81,13 @@ async def mark_paid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             f"✅ Pembayaran diterima untuk <b>{order_id}</b>. Admin akan mengirim produk/detail.",
             parse_mode="HTML",
         )
+        paid_order = db.order(order_id)
+        if paid_order:
+            await post_payment_verified(
+                context.bot,
+                paid_order,
+                source="Manual confirmation by admin",
+            )
     else:
         await query.message.reply_text(
             f"Order tidak diubah. Status saat ini: {order['status']}."

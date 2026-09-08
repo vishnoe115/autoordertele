@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes
 
 import db
 from handlers.user import notify_admin
+from services.channel_notifications import post_payment_verified
 from payments.klikqris import KlikQRIS
 from services.payment import (
     EXPIRED_STATUSES,
@@ -50,6 +51,13 @@ def build_payment_checker(klikqris: KlikQRIS):
                             f"✅ Pembayaran <b>{order['order_id']}</b> berhasil diverifikasi.",
                             parse_mode="HTML",
                         )
+                        paid_order = db.order(order["order_id"])
+                        if paid_order:
+                            await post_payment_verified(
+                                context.bot,
+                                paid_order,
+                                source="KlikQRIS status polling",
+                            )
 
                 elif status in EXPIRED_STATUSES:
                     db.update_payment(order["order_id"], status="EXPIRED")

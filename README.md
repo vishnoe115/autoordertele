@@ -178,3 +178,34 @@ Jika pytest tersedia:
 ```bash
 pytest -q
 ```
+
+## Channel Bukti Pembayaran & Mention Owner
+
+Versi ini dapat otomatis mencatat transaksi ke channel Telegram.
+
+Tambahkan ke `config.env`:
+
+```env
+PAYMENT_CHANNEL_ID=-1001234567890
+OWNER_MENTION_USERNAME=your_admin_username
+OWNER_MENTION_LABEL=Owner
+```
+
+`OWNER_MENTION_USERNAME` ditulis tanpa `@`. Jika dikosongkan, bot menggunakan clickable mention berbasis `ADMIN_USER_ID`.
+
+Sebelum menjalankan bot:
+
+1. Tambahkan bot ke channel transaksi.
+2. Jadikan bot admin atau berikan izin **Post Messages**.
+3. Pastikan owner/admin bergabung di channel tersebut jika ingin menerima mention/notifikasi.
+4. Gunakan ID channel format `-100...` pada `PAYMENT_CHANNEL_ID`.
+
+Flow channel:
+
+- User menekan **Saya Sudah Bayar** → channel mendapat notifikasi bahwa user mengklaim sudah membayar.
+- User mengirim screenshot bukti → foto otomatis diposting ke channel dengan Order ID, customer, produk, total, metode, status, dan mention owner.
+- Admin mengonfirmasi pembayaran manual → channel mendapat record **PEMBAYARAN TERVERIFIKASI**.
+- KlikQRIS webhook sukses → channel mendapat record pembayaran otomatis.
+- Jika webhook terlewat tetapi status poller mendeteksi pembayaran → channel tetap mendapat record pembayaran otomatis.
+
+Bukti foto juga tetap dikirim ke private chat admin seperti sebelumnya.
